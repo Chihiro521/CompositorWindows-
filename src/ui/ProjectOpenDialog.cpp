@@ -1,4 +1,5 @@
 #include "ProjectOpenDialog.h"
+#include "LanguageManager.h"
 #include "VisualStyle.h"
 #include "EditorIcons.h"
 #include <QDialog>
@@ -44,8 +45,11 @@ bool canNavigateProjectItem(IShellItem* item){
 void configureProjectOpenDialog(IFileOpenDialog* dialog){
     FILEOPENDIALOGOPTIONS options{};checked(dialog->GetOptions(&options),"Read project picker options");
     checked(dialog->SetOptions(options|FOS_PICKFOLDERS|FOS_ALLOWMULTISELECT|FOS_FORCEFILESYSTEM),"Configure project picker");
-    checked(dialog->SetTitle(L"Open Compositor Projects"),"Set project picker title");checked(dialog->SetOkButtonLabel(L"Open"),"Set project picker action");
-    checked(dialog->SetFileNameLabel(L"Project folders"),"Set project picker field label");
+    const auto title=LanguageManager::translateText("Open Compositor Projects").toStdWString();
+    const auto open=LanguageManager::translateText("Open").toStdWString();
+    const auto folders=LanguageManager::translateText("Project folders").toStdWString();
+    checked(dialog->SetTitle(title.c_str()),"Set project picker title");checked(dialog->SetOkButtonLabel(open.c_str()),"Set project picker action");
+    checked(dialog->SetFileNameLabel(folders.c_str()),"Set project picker field label");
 }
 std::optional<QStringList> chooseProjectDirectories(QWidget* owner){
     installVisualStyle();

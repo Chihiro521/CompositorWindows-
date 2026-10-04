@@ -17,6 +17,8 @@ menus and tabs, compact adjustment panels, colored Hue/Saturation sliders and
 a project picker. Layer rows place visibility, image and mask thumbnails before
 the name. The vector tool rail and keyboard shortcuts remain available.
 
+The Simplified Chinese localized distribution retains product version 0.1.4. **View > Language** switches the application UI between English and 简体中文, remembers the choice, and follows the Windows display language on first launch. Project content and user-entered text are not translated.
+
 Version 0.1.4 prepares the public repository, consolidates documentation, and updates Windows port credits and package naming. Editing behavior is unchanged from 0.1.3.
 
 ## What you can do

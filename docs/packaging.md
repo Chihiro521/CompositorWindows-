@@ -13,7 +13,9 @@ To build a package, use PowerShell 7 in the Windows repository:
 ./scripts/package.ps1 -Version 0.1.4
 ```
 
-Bootstrap downloads and verifies the pinned Qt corresponding source and WiX 5.0.2 compiler/UI archives. Building MSI files requires a .NET runtime (6 or later); this host uses .NET 8. Only the packaging host needs WiX/.NET. `scripts/msi/toolchain.json` records tool URLs and hashes. `-Offline` verifies cached inputs; `package.ps1` uses this mode automatically. `-PortableOnly` omits MSI generation. `-SkipBuild` packages the existing Release executable and must be used only after validating that binary against the current source.
+Bootstrap downloads and verifies the pinned Qt 6.8.3 `qtbase`, `qttools` (including LinguistTools), and `qttranslations` archives, their required corresponding source archives, and WiX 5.0.2 compiler/UI archives. The portable payload includes the Qt Simplified Chinese dialog catalog; the app's `.qm` catalog is embedded in `Compositor.exe`, and the `.ts` source is included in the matching source ZIP. Building MSI files requires a .NET runtime (6 or later); this host uses .NET 8. Only the packaging host needs WiX/.NET. `scripts/msi/toolchain.json` records tool URLs and hashes. `-Offline` verifies cached inputs; `package.ps1` uses this mode automatically. `-PortableOnly` omits MSI generation. `-SkipBuild` packages the existing Release executable and must be used only after validating that binary against the current source.
+
+The localized distribution keeps product version **0.1.4**. Do not assign it a new main-project version; package output remains under the existing 0.1.4 identifier.
 
 Each run creates a new `dist/CompositorWindows-<version>-preview-<timestamp>` directory with the MSI, portable ZIP, matching application-source ZIP, separate demo ZIP, SHA256 sums, and package manifest. The manifest records the Git revision, whether any packaged source files differ from that commit, source archive hash, upstream pin, and every runtime file. Unrelated working-tree evidence does not affect the source flag. A public release must identify its frozen commit/tag. Existing output directories are preserved.
 

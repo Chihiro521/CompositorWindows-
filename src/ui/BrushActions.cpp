@@ -67,7 +67,7 @@ bool MainWindow::beginBrush(Point point,Qt::KeyboardModifiers modifiers){
     if(p->document->selection&&(!p->document->selection->coverage||!p->document->selection->coverage->hasCoverage()))return true;
     p->history.begin(tool_==Tool::Eraser?"Erase":"Brush",p->document,p->active);
     try{
-        if(!brushGpu_){auto shader=QDir(QApplication::applicationDirPath()).filePath("shaders/BrushCoverage.hlsl");if(!QFileInfo::exists(shader))shader=QStringLiteral(COMPOSITOR_SOURCE_ROOT)+"/shaders/BrushCoverage.hlsl";try{brushGpu_=std::make_shared<graphics::D3D11BrushCoverage>(std::filesystem::path(shader.toStdWString()),warp_);}catch(const std::exception&e){statusBar()->showMessage(QString("Using software brush: ")+e.what());}}
+        if(!brushGpu_){auto shader=QDir(QApplication::applicationDirPath()).filePath("shaders/BrushCoverage.hlsl");if(!QFileInfo::exists(shader))shader=QStringLiteral(COMPOSITOR_SOURCE_ROOT)+"/shaders/BrushCoverage.hlsl";try{brushGpu_=std::make_shared<graphics::D3D11BrushCoverage>(std::filesystem::path(shader.toStdWString()),warp_);}catch(const std::exception&e){statusBar()->showMessage(QString("Using software brush: %1").arg(QString::fromUtf8(e.what())));}}
         auto settings=brushSettings_;settings.color={uint8_t(foreground_.red()),uint8_t(foreground_.green()),uint8_t(foreground_.blue())};settings.opacity*=foreground_.alphaF();settings.erase=tool_==Tool::Eraser&&!strokeMask_;if(strokeMask_){auto v=uint8_t(maskPaintWhite_?255:0);settings.color={v,v,v};settings.opacity=brushSettings_.opacity;}
         uint64_t remaining=100000000;
         for(const auto&layer:p->document->layers)if(layer.id!=l->id){

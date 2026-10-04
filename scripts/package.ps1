@@ -21,11 +21,23 @@ try {
  $release=Join-Path $packageRoot 'build\release\Release'
  Copy-Item -LiteralPath (Join-Path $release 'Compositor.exe') -Destination $payload
  $deploy=Join-Path $packageRoot 'dependencies\qt\bin\windeployqt.exe'
- & $deploy --release --no-translations --no-opengl-sw --no-compiler-runtime --dir $payload (Join-Path $payload 'Compositor.exe') *> (Join-Path $output 'qt-deploy.log')
+ & $deploy --release --translations zh_CN --no-opengl-sw --no-compiler-runtime --dir $payload (Join-Path $payload 'Compositor.exe') *> (Join-Path $output 'qt-deploy.log')
  if($LASTEXITCODE){throw 'Qt application deployment failed'}
+ $qtBaseTranslation=Join-Path $packageRoot 'dependencies\qt\translations\qtbase_zh_CN.qm'
+ if(-not (Test-Path -LiteralPath $qtBaseTranslation -PathType Leaf)){throw 'Locked Qt base Simplified Chinese dialog catalog is missing'}
+ New-Item -ItemType Directory -Path (Join-Path $payload 'translations') -Force | Out-Null
+ Copy-Item -LiteralPath $qtBaseTranslation -Destination (Join-Path $payload 'translations') -Force
+ if(-not (Test-Path -LiteralPath (Join-Path $payload 'translations\qtbase_zh_CN.qm'))){throw 'Qt Simplified Chinese dialog catalog was not deployed'}
  # Application-local redistributable DLLs avoid an elevated VC runtime installer.
  $crt=Join-Path $env:VCToolsRedistDir 'x64\Microsoft.VC143.CRT'
- if(-not (Test-Path -LiteralPath $crt)){throw 'MSVC application-local redistributable directory missing'}
+ if(-not (Test-Path -LiteralPath $crt)){
+  $cacheCompiler=Select-String -LiteralPath (Join-Path $packageRoot 'build\release\CMakeCache.txt') -Pattern '^CMAKE_CXX_COMPILER:FILEPATH=' | Select-Object -First 1 -ExpandProperty Line
+  $toolsetVersion=if($cacheCompiler -match '[\\/]MSVC[\\/](\d+\.\d+)\.\d+[\\/]'){$Matches[1]}else{$null}
+  $redistRoot=Split-Path -Path $env:VCToolsRedistDir -Parent
+  $crt=Get-ChildItem -LiteralPath $redistRoot -Directory | Where-Object {(!$toolsetVersion -or $_.Name -like "$toolsetVersion.*") -and (Test-Path -LiteralPath (Join-Path $_.FullName 'x64\Microsoft.VC143.CRT'))} | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty FullName
+  if($crt){$crt=Join-Path $crt 'x64\Microsoft.VC143.CRT'}
+ }
+ if(-not (Test-Path -LiteralPath $crt)){throw 'MSVC application-local redistributable directory for the configured compiler is missing'}
  Get-ChildItem -LiteralPath $crt -Filter '*.dll' | Copy-Item -Destination $payload
  $imaging=Join-Path $packageRoot 'dependencies\imaging'
  $lock=Get-Content -LiteralPath (Join-Path $imaging 'lock.json') -Raw | ConvertFrom-Json
@@ -47,9 +59,11 @@ try {
  $wixLicense=Join-Path $packageRoot 'dependencies\packaging\WIX-LICENSE.txt'
  if(Test-Path -LiteralPath $wixLicense){Copy-Item -LiteralPath $wixLicense -Destination (Join-Path $payload 'licenses')}
  $qtLock=Get-Content -LiteralPath (Join-Path $packageRoot 'dependencies.lock.json') -Raw | ConvertFrom-Json
- $qtSource=Join-Path $packageRoot $qtLock.qt.source.path
- if((Get-FileHash -LiteralPath $qtSource -Algorithm SHA256).Hash -ine $qtLock.qt.source.sha256){throw 'Qt corresponding source checksum mismatch'}
- Copy-Item -LiteralPath $qtSource -Destination (Join-Path $payload 'sources')
+ foreach($qtSourceEntry in @($qtLock.qt.source,$qtLock.qt.translationSource)){
+  $qtSource=Join-Path $packageRoot $qtSourceEntry.path
+  if((Get-FileHash -LiteralPath $qtSource -Algorithm SHA256).Hash -ine $qtSourceEntry.sha256){throw "Qt corresponding source checksum mismatch: $($qtSourceEntry.path)"}
+  Copy-Item -LiteralPath $qtSource -Destination (Join-Path $payload 'sources')
+ }
  foreach($repo in $lock.repositories){
   $archive=Join-Path $imaging "$($repo.name)-$($repo.version)-source.tar"
   if((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ine $repo.source_archive_sha256){throw "Corresponding source mismatch: $($repo.name)"}
@@ -70,6 +84,7 @@ try {
   }
  }
  foreach($dir in @('src','shaders')){Copy-ApplicationSource (Join-Path $packageRoot $dir) (Join-Path $source $dir) @('.cpp','.c','.h','.hpp','.hlsl','.rc','.manifest','.in')}
+ Copy-ApplicationSource (Join-Path $packageRoot 'translations') (Join-Path $source 'translations') @('.ts')
  Copy-ApplicationSource (Join-Path $packageRoot 'assets') (Join-Path $source 'assets') @('.ico','.svg','.png','.txt','.ttf')
  $testSources=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  $includeDirectories=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)

@@ -189,7 +189,7 @@ bool MainWindow::beginRetouch(Point point,Qt::KeyboardModifiers modifiers) {
             auto shader=QDir(QApplication::applicationDirPath()).filePath("shaders/BrushCoverage.hlsl");
             if(!QFileInfo::exists(shader))shader=QStringLiteral(COMPOSITOR_SOURCE_ROOT)+"/shaders/BrushCoverage.hlsl";
             try{brushGpu_=std::make_shared<graphics::D3D11BrushCoverage>(std::filesystem::path(shader.toStdWString()),warp_);}
-            catch(const std::exception& error){fallback=QString("Using software retouch coverage: ")+error.what();}
+            catch(const std::exception& error){fallback=QString("Using software retouch coverage: %1").arg(QString::fromUtf8(error.what()));}
         }
         if(settings.mode==retouch::Mode::Clone&&settings.sampleAllLayers)sources.allLayersSource=retouch::compositeSource(document);
         const auto selection=selected?selected->coverage:nullptr;
