@@ -86,7 +86,7 @@ void MainWindow::restoreToolState(const EditorProject& project) {
     combo(this,"shapeKind","",int(shapeStyle_.kind));number(this,"","Corner radius",shapeStyle_.cornerRadius);
     combo(this,"marqueeShape","Marquee shape",ellipse_?1:0);
     combo(this,"lassoKind","",lassoKind_==editing::LassoKind::Polygonal?1:0);
-    if(auto* item=control<QComboBox>(this,"cropRatioChoice")){const QSignalBlocker blocker(item);item->setCurrentText(cropRatioChoice_);}
+    if(auto* item=control<QComboBox>(this,"cropRatioChoice")){const QSignalBlocker blocker(item);item->setCurrentIndex(item->findData(cropRatioChoice_));}
     for(const auto entry:{std::pair{"selectionExpandAmount",selectionExpandAmount_},std::pair{"selectionContractAmount",selectionContractAmount_}})if(auto* item=control<QSpinBox>(this,entry.first)){const QSignalBlocker blocker(item);item->setValue(entry.second);}
     combo(this,"selectionMode","Selection mode",int(selectionMode_));
     check(this,"selectionAntialias","selectionOptions","Antialias",selectionAntialias_);

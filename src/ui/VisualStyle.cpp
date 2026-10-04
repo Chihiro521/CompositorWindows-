@@ -322,7 +322,7 @@ void styleWorkspace(QMainWindow* window) {
         layout->setContentsMargins(14,12,14,12);layout->addWidget(new QLabel(dock->windowTitle(),title));layout->addStretch();dock->setTitleBarWidget(title);
         if(dock->widget()&&dock->widget()->layout())dock->widget()->layout()->setContentsMargins(12,10,12,12);
     }
-    auto menus=menu->actions();auto findMenu=[&](const QString& label)->QMenu*{for(auto* action:menus)if(action->text().remove('&')==label)return action->menu();return nullptr;};
+    auto menus=menu->actions();auto findMenu=[&](const QString& label)->QMenu*{const auto objectName=QStringLiteral("menu")+label;for(auto* action:menus)if(action->menu()&&action->menu()->objectName()==objectName)return action->menu();for(auto* action:menus)if(action->text().remove('&')==label)return action->menu();return nullptr;};
     if(auto* view=findMenu("View")){
         view->addSeparator();auto* appearance=view->addMenu("Appearance");
         auto* mac=appearance->addAction("Mac-style title bar");mac->setObjectName("macTitleBarAction");mac->setCheckable(true);mac->setChecked(macTitleBarEnabled());

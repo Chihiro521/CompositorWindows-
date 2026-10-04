@@ -8,6 +8,10 @@ In an installed build, use the Start menu shortcut. In a portable build, open `C
 
 Use **File > Open Project** for a saved `.comp` project. A `.comp` project is a directory containing its manifest and image assets. Copy or back up the complete directory. Save with **Ctrl+S**, or use **Save Project As** to make a separate project. An asterisk in the tab indicates unsaved changes. Closing a modified project offers Save, Discard or Cancel.
 
+## Interface language
+
+Choose **View > Language > English** or **View > Language > Simplified Chinese (简体中文)** to switch the interface immediately. On first launch, Compositor follows the Windows display language and selects Simplified Chinese for a Simplified Chinese Windows UI; otherwise it starts in English. A language you choose is remembered. Switching updates menus, tool controls, accessibility labels and Qt dialogs while leaving open documents, unsaved edits and text you entered unchanged.
+
 ## Window appearance
 
 Windows title bars and system controls are the default. Turn on **View > Appearance > Mac-style title bar** for colored controls on the left; turn it off to restore the native Windows title bar. The choice applies immediately to the editor and dialogs and is remembered between launches. It changes only the window chrome; the editor's visual design stays the same.

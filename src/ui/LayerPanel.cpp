@@ -1,4 +1,5 @@
 #include "LayerPanel.h"
+#include "LanguageManager.h"
 #include "EditorIcons.h"
 #include <QStyledItemDelegate>
 #include "LayerAccessibility.h"
@@ -33,16 +34,16 @@ std::string idOf(const QTreeWidgetItem* item){return item?item->data(0,Qt::UserR
 void nameLayerControls(QTreeWidgetItem& item,const Layer& layer){
     const auto name=QString::fromStdString(layer.name);
     // NativeLayerList.swift:569-586 gives each thumbnail and link its own name.
-    item.setData(1,Qt::AccessibleTextRole,"Select image: "+name);
+    item.setData(1,Qt::AccessibleTextRole,QString("Select image: %1").arg(name));
     item.setData(1,Qt::AccessibleDescriptionRole,item.toolTip(1));
     if(layer.mask){
-        item.setData(2,Qt::AccessibleTextRole,(layer.mask->linked?"Unlink mask: ":"Link mask: ")+name);
+        item.setData(2,Qt::AccessibleTextRole,QString(layer.mask->linked?"Unlink mask: %1":"Link mask: %1").arg(name));
         item.setData(2,Qt::AccessibleDescriptionRole,item.toolTip(2));
-        item.setData(3,Qt::AccessibleTextRole,"Select mask: "+name);
+        item.setData(3,Qt::AccessibleTextRole,QString("Select mask: %1").arg(name));
         item.setData(3,Qt::AccessibleDescriptionRole,item.toolTip(3));
     }
     // Retain the row name; LayerAccessibility exposes its checkbox separately.
-    item.setData(0,Qt::AccessibleDescriptionRole,(layer.visible?"Hide ":"Show ")+name);
+    item.setData(0,Qt::AccessibleDescriptionRole,QString(layer.visible?"Hide %1":"Show %1").arg(name));
 }
 std::vector<std::string> idsOf(const QMimeData* mime){std::vector<std::string> ids;for(const auto& value:QJsonDocument::fromJson(mime->data(layerMime)).array())ids.push_back(value.toString().toStdString());return ids;}
 QTreeWidgetItem* itemWithId(QTreeWidget* tree,const std::string& id){QTreeWidgetItemIterator it(tree);while(*it){if(idOf(*it)==id)return *it;++it;}return nullptr;}
@@ -215,10 +216,11 @@ std::optional<LayerActionControl> LayerPanelController::actionControl(const std:
     const auto row=tree_->visualItemRect(item);
     QRect rect=exposed?QRect(tree_->columnViewportPosition(column),row.top(),tree_->columnWidth(column),row.height()).intersected(tree_->viewport()->rect()):QRect{};
     if(!rect.isEmpty())rect.translate(tree_->viewport()->mapToGlobal(QPoint(0,0)));
-    const auto prefix=kind==LayerControlKind::Image?QStringLiteral("Select image: "):
+    const auto sourcePrefix=kind==LayerControlKind::Image?QStringLiteral("Select image: "):
         kind==LayerControlKind::Mask?QStringLiteral("Select mask: "):
         layer->mask->linked?QStringLiteral("Unlink mask: "):QStringLiteral("Link mask: ");
-    return LayerActionControl{prefix+QString::fromStdString(layer->name),item->toolTip(column),rect,
+    const auto name=sourcePrefix+QString::fromStdString(layer->name);
+    return LayerActionControl{LanguageManager::translateText(name),item->toolTip(column),rect,
         tree_->isEnabled()&&(host_.targetEnabled?host_.targetEnabled():!host_.canEdit||host_.canEdit()),exposed};
 }
 void LayerPanelController::invokeActionControl(std::string id,LayerControlKind kind) {
@@ -261,7 +263,7 @@ LayerPanelController* LayerPanelController::find(QTreeWidget* tree){for(auto* ch
 void LayerPanelController::invoke(const std::function<void()>& fn){try{if(host_.prepare)host_.prepare();fn();}catch(const std::exception&e){if(host_.error)host_.error(QString::fromUtf8(e.what()));}}
 void LayerPanelController::selectionChanged(){if(rebuilding_)return;if(host_.canEdit&&!host_.canEdit()){updateSelection();return;}invoke([&]{layers::SelectionState selected;for(QTreeWidgetItemIterator it(tree_);*it;++it)if((*it)->isSelected())selected.ids.push_back(idOf(*it));selected.primary=idOf(tree_->currentItem());if(std::find(selected.ids.begin(),selected.ids.end(),selected.primary)==selected.ids.end())selected.primary=selected.ids.empty()?std::string{}:selected.ids.front();host_.select(std::move(selected),false);});}
 void LayerPanelController::updateSelection(){const auto state=host_.state();const bool editable=!host_.canEdit||host_.canEdit();QSignalBlocker block(tree_);for(QTreeWidgetItemIterator it(tree_);*it;++it){auto* item=*it;auto flags=item->flags();flags.setFlag(Qt::ItemIsEditable,editable);flags.setFlag(Qt::ItemIsUserCheckable,editable);flags.setFlag(Qt::ItemIsSelectable,editable);item->setFlags(flags);const auto id=idOf(item);item->setSelected(std::find(state.selection.ids.begin(),state.selection.ids.end(),id)!=state.selection.ids.end());item->setExpanded(!state.collapsed.contains(id));if(id==state.selection.primary)tree_->setCurrentItem(item,0,QItemSelectionModel::NoUpdate);item->setBackground(1,id==state.selection.primary&&!state.maskSelected?QBrush(QColor(85,125,165)):QBrush());item->setBackground(3,id==state.selection.primary&&state.maskSelected?QBrush(QColor(85,125,165)):QBrush());}if(auto* combo=tree_->parentWidget()->findChild<QComboBox*>("layerEditTarget")){QSignalBlocker comboBlock(combo);const auto*l=state.document?findLayer(*state.document,state.selection.primary):nullptr;combo->setEnabled(l&&l->mask&&state.selection.ids.size()==1&&(!host_.targetEnabled||host_.targetEnabled()));combo->setCurrentIndex(state.maskSelected?1:0);}}
-void LayerPanelController::rebuild(){rebuilding_=true;QSignalBlocker block(tree_);tree_->clear();const auto state=host_.state();if(state.document){std::unordered_map<std::string,QTreeWidgetItem*> items;for(const auto& layer:state.document->layers){auto* item=new QTreeWidgetItem({QString::fromStdString(layer.name)});item->setData(0,Qt::UserRole,QString::fromStdString(layer.id));item->setData(0,Qt::UserRole+2,layer.group?QString("Folder"):!layer.adjustmentJson.empty()?QString("Adjustment"):QString("%1 × %2 px").arg(layer.raster?layer.raster->width:int(layer.transform.width)).arg(layer.raster?layer.raster->height:int(layer.transform.height)));item->setFlags(item->flags()|Qt::ItemIsUserCheckable|Qt::ItemIsEditable);item->setCheckState(0,layer.visible?Qt::Checked:Qt::Unchecked);item->setIcon(1,thumbnail(layer,false,{double(state.document->width),double(state.document->height)}));item->setToolTip(1,"Select image; Ctrl-click selects alpha, Ctrl+Shift adds, Ctrl+Alt subtracts");if(layer.mask){item->setIcon(3,thumbnail(layer,true,{double(state.document->width),double(state.document->height)}));if(layer.mask->linked)item->setIcon(2,editorIcon(EditorIcon::Link));item->setToolTip(2,layer.mask->linked?"Unlink mask":"Link mask");item->setToolTip(3,"Select mask; Shift-click enables/disables; Ctrl-click selects black areas; Alt-drag copies mask");}if(!layer.maskSourceId.empty())item->setToolTip(0,"Clipped to "+QString::fromStdString(layer.maskSourceId));item->setSizeHint(0,{0,44});items.emplace(layer.id,item);}
+void LayerPanelController::rebuild(){rebuilding_=true;QSignalBlocker block(tree_);tree_->clear();const auto state=host_.state();if(state.document){std::unordered_map<std::string,QTreeWidgetItem*> items;for(const auto& layer:state.document->layers){auto* item=new QTreeWidgetItem({QString::fromStdString(layer.name)});item->setData(0,Qt::UserRole,QString::fromStdString(layer.id));item->setData(0,Qt::UserRole+2,layer.group?QString("Folder"):!layer.adjustmentJson.empty()?QString("Adjustment"):QString("%1 × %2 px").arg(layer.raster?layer.raster->width:int(layer.transform.width)).arg(layer.raster?layer.raster->height:int(layer.transform.height)));item->setFlags(item->flags()|Qt::ItemIsUserCheckable|Qt::ItemIsEditable);item->setCheckState(0,layer.visible?Qt::Checked:Qt::Unchecked);item->setIcon(1,thumbnail(layer,false,{double(state.document->width),double(state.document->height)}));item->setToolTip(1,"Select image; Ctrl-click selects alpha, Ctrl+Shift adds, Ctrl+Alt subtracts");if(layer.mask){item->setIcon(3,thumbnail(layer,true,{double(state.document->width),double(state.document->height)}));if(layer.mask->linked)item->setIcon(2,editorIcon(EditorIcon::Link));item->setToolTip(2,layer.mask->linked?"Unlink mask":"Link mask");item->setToolTip(3,"Select mask; Shift-click enables/disables; Ctrl-click selects black areas; Alt-drag copies mask");}if(!layer.maskSourceId.empty())item->setToolTip(0,QString("Clipped to %1").arg(QString::fromStdString(layer.maskSourceId)));item->setSizeHint(0,{0,44});items.emplace(layer.id,item);}
         for(const auto& entry:layers::entries(*state.document,true)){const auto*l=findLayer(*state.document,entry.id);auto* item=items.at(entry.id);nameLayerControls(*item,*l);if(l->parentId.empty())tree_->addTopLevelItem(item);else items.at(l->parentId)->addChild(item);item->setExpanded(!state.collapsed.contains(entry.id));if(!entry.visible)item->setForeground(0,QBrush(QColor(125,125,125)));}}
     std::erase_if(thumbnailCache_->entries,[&](const auto&entry){const auto*l=state.document?findLayer(*state.document,entry.first.first):nullptr;return !l||(entry.first.second&&!l->mask);});
     updateSelection();rebuilding_=false;updateLayerAccessibility(tree_);

@@ -2,8 +2,8 @@ param([switch]$Offline,[string]$Python,[string]$RuntimeDirectory)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path $PSScriptRoot -Parent
 $taskVswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
-$taskVS = & $taskVswhere -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
-if (-not $taskVS) { throw 'Install Visual Studio 2022 C++ x64 tools and Windows 11 SDK. No privileged installation is performed by bootstrap.' }
+$taskVS = & $taskVswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
+if (-not $taskVS) { throw 'Install Visual Studio Build Tools with C++ x64 tools and the Windows SDK. No privileged installation is performed by bootstrap.' }
 & (Join-Path $taskVS 'Common7\Tools\Launch-VsDevShell.ps1') -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
 if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { $env:PATH = "$taskVS\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;$env:PATH" }
 $taskLock = Get-Content (Join-Path $taskRoot 'dependencies.lock.json') -Raw | ConvertFrom-Json
@@ -19,6 +19,22 @@ if (-not (Test-Path (Join-Path $taskQt 'lib\cmake\Qt6\Qt6Config.cmake'))) {
     New-Item -ItemType Directory -Force $taskQt | Out-Null
     Push-Location $taskQt
     try { & cmake -E tar xf $taskArchive; if ($LASTEXITCODE) { throw 'Qt extraction failed.' } } finally { Pop-Location }
+}
+foreach ($taskComponent in @('tools','translations')) {
+    $taskComponentLock = $taskLock.qt.$taskComponent
+    $taskComponentArchive = Join-Path $taskRoot "dependencies\downloads\qt$taskComponent.7z"
+    if (-not (Test-Path -LiteralPath $taskComponentArchive)) {
+        if ($Offline) { throw "Locked Qt $taskComponent archive is missing. Run bootstrap with network access once." }
+        New-Item -ItemType Directory -Force (Split-Path $taskComponentArchive) | Out-Null
+        Invoke-WebRequest -Uri $taskComponentLock.url -OutFile $taskComponentArchive
+    }
+    if ((Get-FileHash -LiteralPath $taskComponentArchive -Algorithm SHA256).Hash -ine $taskComponentLock.sha256) { throw "Locked Qt $taskComponent archive SHA256 mismatch." }
+    $taskComponentMarker = if ($taskComponent -eq 'tools') { 'lib\cmake\Qt6LinguistTools\Qt6LinguistToolsConfig.cmake' } else { 'translations\qtbase_zh_CN.qm' }
+    if (-not (Test-Path -LiteralPath (Join-Path $taskQt $taskComponentMarker))) {
+        Push-Location $taskQt
+        try { & cmake -E tar xf $taskComponentArchive; if ($LASTEXITCODE) { throw "Qt $taskComponent extraction failed." } } finally { Pop-Location }
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $taskQt $taskComponentMarker))) { throw "Locked Qt $taskComponent archive did not provide the required files." }
 }
 $env:PATH = "$taskQt\bin;$env:PATH"
 $env:PATH = "$taskRoot\dependencies\imaging\install\bin;$taskRoot\dependencies\imaging\onnxruntime-win-x64-1.30.0\lib;$env:PATH"

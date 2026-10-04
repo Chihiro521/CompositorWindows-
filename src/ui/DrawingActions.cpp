@@ -45,8 +45,8 @@ void MainWindow::setupDrawingActions(){
     auto*shape=bar->addAction("Shape (U)");bindCommand(shape,"Tools","Shape (U)",[this]{selectTool(Tool::Shape);refresh(false);});shape->setShortcut({});auto*kind=new QComboBox;kind->setObjectName("shapeKind");kind->addItems({"Rectangle","Ellipse"});bar->addWidget(kind);connect(kind,&QComboBox::currentIndexChanged,this,[this](int i){if(refreshing_)return;cancelShape();shapeStyle_.kind=editing::ShapeKind(i);refresh(false,false);});
     auto*radius=new ui::PropertyNumber;radius->releaseFocus=[this]{if(canvas())canvas()->setFocus();};radius->setObjectName("shapeCornerRadius");radius->setRange(0,5000);radius->setDecimals(0);radius->setAccessibleName("Corner radius");radius->setSuffix(" px radius");bar->addWidget(radius);connect(radius,&QDoubleSpinBox::valueChanged,this,[this](double v){shapeStyle_.cornerRadius=v;});
     auto*restyle=bar->addAction("Update Shape Style");bindCommand(restyle,"Drawing Options","Update Shape Style",[this]{if(!active()||active()->shapeJson.empty())return;edit("Shape Style",[&](Document&){auto style=shapeStyle_;style.red=foreground_.redF();style.green=foreground_.greenF();style.blue=foreground_.blueF();*active()=editing::restyleShape(*active(),style);});});
-    auto*cropRatioControl=new QComboBox;cropRatioControl->setObjectName("cropRatioChoice");cropRatioControl->setAccessibleName("Crop ratio");cropRatioControl->addItems({"Free","Original","1:1","4:3","16:9"});bar->addWidget(cropRatioControl);
-    connect(cropRatioControl,&QComboBox::currentTextChanged,this,[this](const QString& value){if(refreshing_)return;cropRatioChoice_=value;changeCropRatio();});
+    auto*cropRatioControl=new QComboBox;cropRatioControl->setObjectName("cropRatioChoice");cropRatioControl->setAccessibleName("Crop ratio");for(const auto& value:{QStringLiteral("Free"),QStringLiteral("Original"),QStringLiteral("1:1"),QStringLiteral("4:3"),QStringLiteral("16:9")})cropRatioControl->addItem(value,value);bar->addWidget(cropRatioControl);
+    connect(cropRatioControl,&QComboBox::currentIndexChanged,this,[this,cropRatioControl](int index){if(refreshing_||index<0)return;cropRatioChoice_=cropRatioControl->itemData(index).toString();changeCropRatio();});
     auto* dimensions=new QLabel;dimensions->setObjectName("cropDimensions");bar->addWidget(dimensions);bar->addAction(cropCancel);bar->addAction(cropApply);
     auto*background=bar->addAction("Background Color");bindCommand(background,"Tools","Background",[this]{openPalette(true);});background->setShortcut({});
 }
@@ -122,7 +122,7 @@ void MainWindow::changeCropRatio(){
 void MainWindow::cancelCrop(){cropDraft_.reset();cropDrag_.reset();cropSnap_.reset();refresh(false,false);}
 void MainWindow::refreshCropControls(){
     auto* project=current();const bool visible=tool_==Tool::Crop;const bool enabled=project&&project->document&&!project->projectBusy&&!project->importing;
-    if(auto* ratio=findChild<QComboBox*>("cropRatioChoice")){QSignalBlocker block(ratio);ratio->setCurrentText(cropRatioChoice_);ratio->setVisible(visible);ratio->setEnabled(enabled);}
+    if(auto* ratio=findChild<QComboBox*>("cropRatioChoice")){QSignalBlocker block(ratio);ratio->setCurrentIndex(ratio->findData(cropRatioChoice_));ratio->setVisible(visible);ratio->setEnabled(enabled);}
     if(auto* label=findChild<QLabel*>("cropDimensions")){label->setVisible(visible&&cropDraft_.has_value());label->setText(cropDraft_?QString("%1 × %2 px").arg(int(cropDraft_->width)).arg(int(cropDraft_->height)):QString{});}
     for(auto* item:findChildren<QAction*>()){const auto id=item->property("commandId").toString();if(id=="crop.apply"||id=="crop.cancel")item->setVisible(visible);}
     if(canvas()){std::optional<editing::Rect> rect;if(visible&&project&&project->document)rect=cropDraft_.value_or(editing::Rect{0,0,double(project->document->width),double(project->document->height)});canvas()->setCropOverlay(rect);}

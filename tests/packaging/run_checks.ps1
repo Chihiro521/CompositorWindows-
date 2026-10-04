@@ -24,6 +24,7 @@ $bad=@($manifest.files|Where-Object {(Get-FileHash -LiteralPath (Join-Path $port
 Record 'package_sha256' ($bad.Count -eq 0) @{files=$manifest.files.Count;bad=$bad}
 if($manifest.schema -eq 2){
  $application=Join-Path $portable $manifest.entryPoint
+ if(-not (Test-Path -LiteralPath (Join-Path (Split-Path $application -Parent) 'translations\qtbase_zh_CN.qm'))){throw 'Qt Simplified Chinese dialog translations are missing from the package'}
  $policy=Get-Content -LiteralPath (Join-Path $portable 'release-policy.json') -Raw | ConvertFrom-Json
  $developmentFiles=@('CompositorLauncher.exe','CompositorUpdater.exe','install.json','state','update-source.json','update-receipt.json')
  $unexpected=@($developmentFiles | Where-Object {Test-Path -LiteralPath (Join-Path $portable $_)})

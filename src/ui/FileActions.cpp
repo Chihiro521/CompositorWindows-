@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "LanguageManager.h"
 #include "PropertyControls.h"
 #include "persistence/ProjectStore.h"
 #include "imaging/wic_codec.h"
@@ -335,7 +336,8 @@ void MainWindow::exportImage(){
     const auto response=dialog.exec();closed=true;debounce.stop();progress.stop();cancel->store(true);watcher.waitForFinished();
     if(response!=QDialog::Accepted||readyPath.isEmpty())return;
     if(format.currentIndex()==1)settings.setValue("jpegExportQuality",quality.value()/100.);
-    const auto destination=QFileDialog::getSaveFileName(this,"Export Image",{},format.currentIndex()==0?"PNG (*.png)":"JPEG (*.jpg)");if(destination.isEmpty())return;
+    const auto filter=ui::LanguageManager::translateText(format.currentIndex()==0?"PNG (*.png)":"JPEG (*.jpg)");
+    const auto destination=QFileDialog::getSaveFileName(this,"Export Image",{},filter);if(destination.isEmpty())return;
     QProgressDialog saving("Saving image…","Cancel",0,0,this);saving.setObjectName("imageExportSaving");saving.setWindowModality(Qt::ApplicationModal);saving.setMinimumDuration(0);
     auto copyCancelled=std::make_shared<std::atomic_bool>(false);QFutureWatcher<QString> copy;
     connect(&saving,&QProgressDialog::canceled,&saving,[copyCancelled]{copyCancelled->store(true);});

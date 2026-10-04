@@ -4,6 +4,8 @@ A native Windows 11 port of **Compositor**, the image editor created by **[Robbi
 
 Layers, masks, selections, painting, adjustments, filters, and offline background removal, with an interface closely informed by the original Mac app. Windows window controls are the default; an optional Mac-style title bar is available in **View → Appearance**.
 
+This localized distribution supports **English** and **简体中文** from **View → Language**. It keeps Windows preview version **0.1.4**; this language variant does not change the main project's version.
+
 ![Compositor on Windows, editing the After the wind demonstration](docs/images/editor.png)
 
 ## Start here

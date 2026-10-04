@@ -13,8 +13,9 @@ function Get-LockedPackagingAsset([string]$Url,[string]$Path,[string]$Hash){
     }
     if((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ine $Hash){throw "Packaging asset hash mismatch: $Path"}
 }
-$packagingTaskQt=$packagingTaskLock.qt.source
-Get-LockedPackagingAsset $packagingTaskQt.url (Join-Path $packagingTaskRoot $packagingTaskQt.path) $packagingTaskQt.sha256
+foreach($packagingTaskQtSource in @($packagingTaskLock.qt.source,$packagingTaskLock.qt.translationSource)){
+    Get-LockedPackagingAsset $packagingTaskQtSource.url (Join-Path $packagingTaskRoot $packagingTaskQtSource.path) $packagingTaskQtSource.sha256
+}
 if(-not $PortableOnly){
     if(-not(Get-Command dotnet -ErrorAction SilentlyContinue)){throw 'MSI packaging requires a .NET runtime (6 or later); application users do not need .NET.'}
     $packagingTaskTools=Join-Path $packagingTaskRoot 'dependencies\packaging'

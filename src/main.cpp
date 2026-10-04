@@ -3,6 +3,7 @@
 #include "imaging/wic_codec.h"
 #include "imaging/onnx_subject_provider.h"
 #include "core/DocumentExport.h"
+#include "ui/LanguageManager.h"
 #include <QTemporaryDir>
 #include <QFileInfo>
 #include <QApplication>
@@ -38,6 +39,7 @@ int main(int argc,char**argv){
             compositor::exportDocumentAtomic(d,std::filesystem::path(args[output+1].toStdWString()),options,limits);return 0;
         }catch(const std::exception&e){QTextStream(stderr)<<e.what()<<Qt::endl;return 2;}
     }
+    compositor::ui::LanguageManager::initialize(app);
     compositor::MainWindow window(args.contains("--warp"));window.show();
     if(args.contains("--feasibility")||args.contains("--ui-test"))window.addFeasibilityDocument();
     if(args.contains("--ui-test")){

@@ -63,7 +63,7 @@ void MainWindow::layerCommand(int command){
             QStringList titles{"New Project"};std::vector<QPointer<QObject>> identities{nullptr};
             for(int i=0;i<int(projects_.size());++i)if(projects_[i].get()!=p&&!projects_[i]->importing&&!projects_[i]->projectBusy){identities.push_back(projects_[i]->canvas);titles.append(tabs_->tabText(i));}
             QInputDialog dialog(this);dialog.setWindowTitle("Copy Layer to Project");dialog.setLabelText("Destination project");dialog.setComboBoxItems(titles);dialog.setComboBoxEditable(false);
-            auto* choices=dialog.findChild<QComboBox*>();if(!choices)throw std::runtime_error("Copy destination control is unavailable");
+            auto* choices=dialog.findChild<QComboBox*>();if(!choices)throw std::runtime_error("Copy destination control is unavailable");choices->setProperty("dynamicChoices",true);
             for(int i=0;i<int(identities.size());++i)choices->setItemData(i,QVariant::fromValue(identities[size_t(i)].data()));
             if(dialog.exec()!=QDialog::Accepted)return;
             auto* identity=choices->currentData().value<QObject*>();EditorProject* target=nullptr;
